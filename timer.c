@@ -4,6 +4,38 @@
 #include<errno.h>
 #include <unistd.h>
 
+#if 0
+
+This information is just added for rerefence. Like a comment.
+
+           struct sigaction {
+               void     (*sa_handler)(int);
+               void     (*sa_sigaction)(int, siginfo_t *, void *);
+               sigset_t   sa_mask;
+               int        sa_flags;
+               void     (*sa_restorer)(void);
+           };
+
+
+This structure tells how the process should be notified when the event(hence the name:sigevent) occurs.
+       struct sigevent {
+           int    sigev_notify;  /* Notification method */
+           int    sigev_signo;   /* Notification signal */
+           union sigval sigev_value;
+                                 /* Data passed with notification */
+           void (*sigev_notify_function)(union sigval);
+                                 /* Function used for thread
+                                    notification (SIGEV_THREAD) */
+           void  *sigev_notify_attributes;
+                                 /* Attributes for notification thread
+                                    (SIGEV_THREAD) */
+           pid_t  sigev_notify_thread_id;
+                                 /* ID of thread to signal
+                                    (SIGEV_THREAD_ID); Linux-specific */
+       };
+#endif
+
+
 typedef unsigned int boolean;
 
 struct sigevent sev;
@@ -87,21 +119,29 @@ int main()
 		This can be done by filling sival_ptr in sigevent */
 	t1_data.important_data = 555;
 
+	/* Notify the process by sending signal. */
 	sev.sigev_notify = SIGEV_SIGNAL;
 	sev.sigev_signo = SIGUSR1;
 	hdata.type = T1_TIMER;
 	hdata.user_data = (void *)&hdata.tdata;
 	sev.sigev_value.sival_ptr = (void *)&hdata;
 
+	/* CLOCK_REALTIME: Jump forwards and backward as system time changes. system time is which shows on the screen.
+	   CLOCK_MONOTONIC: Represents the absolute elapsed wall-clock time since some arbitrary, fixed point in the past.
+	   It isn't affected by changes in the system time-of-day clock.*/
 	if(-1 == timer_create(CLOCK_REALTIME, &sev, &hdata.tdata.timer_id)) {
 		printf("\n timer create failed. errno:%d", errno);
 		return 0;
 	}
 
+	/* When you specify SA_SIGINFO, you can use the you can specify the signal handling function for the signal number.
+		Else sa_handler will be used as the signal handling function. With sa_handler you can use SIG_DFL or SIG_IGN (i.e. default action of the signal or ignore the signal)*/
 	sa.sa_flags = SA_SIGINFO;
 	sa.sa_sigaction = timer_cb;
 
+	/* Clear all the bits in the signal set*/
 	sigemptyset(&sa.sa_mask);
+	/* This system call is used to change the action taken by a process on receipt of signal. */
 	if (-1 == sigaction(SIGUSR1, &sa, NULL)) {
 		printf("error in sigaction %d", errno);
 		return 0;
