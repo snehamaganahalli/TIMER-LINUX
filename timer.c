@@ -27,7 +27,7 @@ typedef struct
 
 /* you can use this when there are many timers.*/
 typedef struct {
-
+	timer_data tdata;
 	timer_type type;
 	void* user_data;
 }handler_data;
@@ -50,6 +50,7 @@ void timer_start(timer_data* tdata, timer_type ttype)
 		break;
 	}
 
+	tdata->is_running = 1;
 	if (-1 == timer_settime(tdata->timer_id, 0, &its, NULL)) {
 		printf("error: settime");
 		return;
@@ -64,37 +65,35 @@ void timer_cb(int sig, siginfo_t* si, void* uc)
 
 	switch (hdata->type) {
 		case T1_TIMER:
+		/* Printf should not be called from the timer callback. check man 7 signal.*/
 		printf("\n T1 timer expired");
 		timer_t1_data* t1_data = hdata->user_data;
 		printf("\n t1 data is %d", t1_data->important_data);
 		break;
 	}
-	/* Printf should not be called from the timer callback. check man 7 signal.*/
-
+	hdata->tdata.is_running = 0;
 }
 
 int main()
 {
-
 	struct sigaction sa;
-	timer_data tdata = {0};
+	timer_t1_data t1_data;
 
 	int timer_value;
 
-	timer_t1_data t1_data;
 	handler_data hdata;
 	/* important data that is needed once the timer is expired. Since any timer can expire at any time,
 		we may need some information regarding which timer has expired, and based on that action needs to be taken.
-		This can be done by filling sival_ptr in sigevent*/
+		This can be done by filling sival_ptr in sigevent */
 	t1_data.important_data = 555;
 
 	sev.sigev_notify = SIGEV_SIGNAL;
 	sev.sigev_signo = SIGUSR1;
 	hdata.type = T1_TIMER;
-	hdata.user_data = (void *)&t1_data;
+	hdata.user_data = (void *)&hdata.tdata;
 	sev.sigev_value.sival_ptr = (void *)&hdata;
 
-	if(-1 == timer_create(CLOCK_REALTIME, &sev, &tdata.timer_id)) {
+	if(-1 == timer_create(CLOCK_REALTIME, &sev, &hdata.tdata.timer_id)) {
 		printf("\n timer create failed. errno:%d", errno);
 		return 0;
 	}
@@ -109,7 +108,7 @@ int main()
 	}
 
 	/*Now I will call the timer*/
-	timer_start(&tdata, T1_TIMER);
+	timer_start(&hdata.tdata, T1_TIMER);
 
 	/*This is added becasue main function should not exit before timer expires.*/
 	while(1);
