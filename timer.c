@@ -9,6 +9,8 @@
 This information is just added for rerefence. Like a comment.
 
            struct sigaction {
+              /* u can use it or u can use the below sa_sigaction. if u do not need void* to send data, then u can use it.
+                 u can use sa_handler = timer_cb; */
                void     (*sa_handler)(int);
                void     (*sa_sigaction)(int, siginfo_t *, void *);
                sigset_t   sa_mask;
@@ -89,7 +91,7 @@ void timer_start(timer_data* tdata, timer_type ttype)
 	}
 }
 
-/* Will be called once the timer is expired*/
+/* Will be called once the timer is expired. */
 void timer_cb(int sig, siginfo_t* si, void* uc)
 {
 	handler_data* hdata;
